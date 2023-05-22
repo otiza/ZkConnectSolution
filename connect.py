@@ -185,10 +185,13 @@ def init():
     """
     Initiate the ZK Teco monitoring client.
     """
+    
+    
+    
     try:
         # Load the config
-        configPath = Path(os.path.abspath(__file__)).parent / 'config.yaml'
-        stream = open(configPath, 'r')
+        
+        stream = open(os.environ.get('CONF_PATH'), 'r')
         
         # Parse config
         config = ParseConfig.parse(stream)
@@ -198,7 +201,7 @@ def init():
         
         # Setup connection
         device = config.get('device')
-        endpoint = config.get('endpoint')
+        endpoint = os.environ.get('API')
         transmission = config.get(
             'transmission') if 'transmission' in config.keys() else True
         zk = ZkConnect(
