@@ -7,4 +7,6 @@
 
 3 - setup the supervisord.conf with every machine section
 
+4 - Run with :  "supervisord -c  supervisord.conf"
+
 
