@@ -13,11 +13,11 @@ from zk.exception import ZKError, ZKErrorConnection, ZKNetworkError
 
 
 class ZkConnect:
-    
+
     def __init__(self, host, port, endpoint, transmission=True):
         """
         Connect to a ZK Teco device and monitor real-time data.
-        
+
         :param host: The public/private IP address of ZK Teco device
         :param port: The port of ZK Teco device, usually 4370
         :param endpoint: The API endpoint of an external service, where the client will transmit real-time data
@@ -35,11 +35,11 @@ class ZkConnect:
             logging.error(error)
         except Exception as error:
             logging.error(error)
-    
+
     def _connect(self, reconnect=False):
         """
         Attempt to establish a connection to a ZK Teco device.
-        
+
         :param reconnect: Whether it is an attempt to reconnect
         """
         zk = ZK(ip=self.host, port=self.port, verbose=True)
@@ -48,29 +48,68 @@ class ZkConnect:
             logging.debug('initiating reconnection...')
         logging.info(
             'connection established: host: {}, port: {}'.format(self.host, self.port))
-    
+
+    def getToken(self):
+        '''get  the toker from the api'''
+        try:
+            response = requests.post("http://agadirob.leansoft.ma:2020/web/session/authenticate", json={
+                'params': {
+                    "login": "leandev@leansoft.ma",
+                    "password": "lean@soft",
+                    "db": "db_aob_test"
+                },
+            })
+            #get cookie from response
+            cookie = response.headers['Set-Cookie']
+            print(cookie)
+            return cookie
+        except:
+            return None
+
     def _transmit(self, data):
         """
         Transmit real-time data to the specified endpoint.
-        
+
         :param data: The HTTP payload
         :return: requests.models.Response
         """
         try:
             logging.debug('Initiating transmission for ' + str(data))
-            response = requests.post(self.endpoint, data)
+            # parse data as json
+            token = self.getToken()
+            if token is None:
+                return None
+            headers = {
+                'Content-Type': 'application/json',
+                'Cookie': token
+            }
+            response = requests.post("http://agadirob.leansoft.ma:2020/api/ls.pointage.log", json={
+                "params":{
+                    "data": {
+                        "user_id": str(data['user_id']),
+                        "punch": data['punch'],
+                        "timestamp": str(data['timestamp']),
+                        "status": data['status'],
+                        "zk_machine_id": os.environ.get('MACHINE_ID')
+                    }
+                }
+                
+            }, headers=headers)
+            print(response.json())
             response.raise_for_status()
             jsonResponse = response.json()
-            logging.debug("HTTP Response: {}, data: {}".format(jsonResponse.get('message'), jsonResponse.get('log')))
+            logging.debug("HTTP Response: {}, data: {}".format(
+                jsonResponse.get('message'), jsonResponse.get('log')))
             return response
         except requests.exceptions.HTTPError as error:
-            logging.error("HTTP Error: {}, message: {}, data: {}".format(error, error.response.text, str(data)))
+            logging.error("HTTP Error: {}, message: {}, data: {}".format(
+                error, error.response.text, str(data)))
         except Exception as error:
             logging.error("Error: {}, data: {}".format(error, str(data)))
         finally:
             if not self.connection.is_enabled:
                 self.connection.enable_device()
-    
+
     def _healthcheck(self):
         """
         Check connection health, in case of failure attempt re-establishment.
@@ -79,7 +118,7 @@ class ZkConnect:
         # exception is raised, supervisor should start the process
         # all over again.
         print('Getting device time: {}'.format(self.connection.get_time()))
-        
+
     def _shouldStartNewFile(self):
         """
         Check if it is a new day, if it is, exit the program
@@ -88,7 +127,7 @@ class ZkConnect:
         """
         if date.today() != self._startedAt:
             raise Exception('--END OF THE DAY--')
-    
+
     def monitor(self):
         """
         Start monitoring and transmitting real-time data.
@@ -96,19 +135,24 @@ class ZkConnect:
         if not self.connection:
             raise ZKErrorConnection('Connection is not established!')
         
-        for log in self.connection.live_capture():
+        for log in self.connection.live_capture(None):
             if log is None:
                 self._healthcheck()
             else:
                 if self.transmission:
+                    # convet this 2023-05-24 13:55:12 to string
+
+                    print("log: ", str(log.timestamp))
                     self._transmit({
-                        'device_user_id': log.user_id,
-                        'timestamp': log.timestamp
+                        'user_id': log.user_id,
+                        'timestamp': str(log.timestamp),
+                        'punch': log.punch,
+                        'status': log.status
                     })
                 else:
                     print('Received data: {}'.format(log))
             self._shouldStartNewFile()
-    
+
     def disconnect(self):
         """
         Disconnect from the connected ZK Teco device.
@@ -117,34 +161,35 @@ class ZkConnect:
 
 
 class ParseConfig:
-    
+
     @classmethod
     def _validate(cls, config):
         """
         Validate the dictionary structure of config.
-        
+
         :param config: The dictionary containing device config and endpoint
         """
         if not all(key in config.keys() for key in ['device', 'endpoint']):
             raise Exception('device or endpoint key is missing!')
-        
+
         device = config.get('device')
         if not all(key in device.keys() for key in ['host', 'port']):
             raise Exception('host or port key is missing in device!')
         if None in device.values():
             raise Exception('host or port key is empty in device!')
-        
+
         if config.get('endpoint') is None:
             raise Exception('endpoint cannot be empty!')
-        
+
         if 'transmission' in config.keys() and type(config.get('transmission')) is not bool:
-            raise Exception('transmission key must have to be either true or false!')
-    
+            raise Exception(
+                'transmission key must have to be either true or false!')
+
     @classmethod
     def parse(cls, stream):
         """
         Parse a yaml file to a dictionary.
-        
+
         :param stream: The stream of data
         :return: dict
         """
@@ -156,7 +201,7 @@ class ParseConfig:
 def configLogger(config):
     """
     Configure the log formatting.
-    
+
     :param config: Union[dict, None]
     """
     logging.basicConfig(
@@ -169,7 +214,7 @@ def configLogger(config):
 def getLogFileName(config):
     """
     Determine the log file name.
-    
+
     :param config: Union[dict, None]
     :return: str
     """
@@ -185,34 +230,36 @@ def init():
     """
     Initiate the ZK Teco monitoring client.
     """
-    
-    
-    
+
     try:
         # Load the config
-        
-        stream = open(os.environ.get('CONF_PATH'), 'r')
-        
+
+        # stream = open(os.environ.get('CONF_PATH'), 'r')
+        # configPath = Path(os.path.abspath(__file__)).parent / 'config.yaml'
+        # stream = open(configPath, 'r')
         # Parse config
-        config = ParseConfig.parse(stream)
-        
-        # Setup logger
-        configLogger(config.get('log'))
-        
+        # config = ParseConfig.parse(stream)
+
+        # # Setup logger
+        configLogger(None)
+
         # Setup connection
-        device = config.get('device')
-        endpoint = os.environ.get('API')
-        transmission = config.get(
-            'transmission') if 'transmission' in config.keys() else True
+
+        endpoint = "http://agadirob.leansoft.ma:2020/api/ls.pointage.loghttp://agadirob.leansoft.ma:2020/api/ls.pointage.log"
+        transmission = True
+        # get info fron env variables
+        host = os.environ.get('MACHINE_IP')
+        port = os.environ.get('MACHINE_PORT')
+ 
         zk = ZkConnect(
-            host=device.get('host'),
-            port=device.get('port'),
-            endpoint=endpoint,
-            transmission=transmission
-        )
-        
-        # Start monitoring
-        zk.monitor()
+             host=host,
+             port=port,
+             endpoint=endpoint,
+             transmission=transmission
+         )
+
+        # # Start monitoring
+        # zk.monitor()
     except Exception as error:
         logging.error(error)
         sys.exit(1)
