@@ -34,8 +34,10 @@ class ZkConnect:
             self._connect()
         except (ZKNetworkError, ZKErrorConnection, ZKError) as error:
             logging.error(error)
+            print("here")
         except Exception as error:
             logging.error(error)
+            print("here3")
 
     def _connect(self, reconnect=False):
         """
@@ -46,6 +48,7 @@ class ZkConnect:
         zk = ZK(ip=self.host, port=self.port, verbose=True)
         self.connection = zk.connect()
         if reconnect:
+            print("here2")
             logging.debug('initiating reconnection...')
         logging.info(
             'connection established: host: {}, port: {}'.format(self.host, self.port))
