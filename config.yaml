@@ -1,0 +1,9 @@
+device:
+  host: 10.10.10.3
+  port: 4370
+endpoint: http://agadirob.leansoft.ma:2020/api/ls.pointage.log
+machineid: 1 # don't forget to point this to your application route
+transmission: true
+log:
+  filename: transactions # do not include extension
+  split: true
