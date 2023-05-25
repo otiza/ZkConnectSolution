@@ -14,7 +14,7 @@ from zk.exception import ZKError, ZKErrorConnection, ZKNetworkError
 
 class ZkConnect:
 
-    def __init__(self, host, port, endpoint, transmission=True):
+    def __init__(self, host, port, endpoint,id, transmission=True ):
         """
         Connect to a ZK Teco device and monitor real-time data.
 
@@ -26,6 +26,7 @@ class ZkConnect:
         try:
             self.host = host
             self.port = port
+            self.id = id
             self.endpoint = endpoint
             self.transmission = transmission
             self.connection = None
@@ -90,7 +91,7 @@ class ZkConnect:
                         "punch": data['punch'],
                         "timestamp": str(data['timestamp']),
                         "status": data['status'],
-                        "zk_machine_id": os.environ.get('MACHINE_ID')
+                        "zk_machine_id": self.id
                     }
                 }
                 
@@ -234,35 +235,43 @@ def init():
     try:
         # Load the config
 
-        # stream = open(os.environ.get('CONF_PATH'), 'r')
-        # configPath = Path(os.path.abspath(__file__)).parent / 'config.yaml'
-        # stream = open(configPath, 'r')
+        #stream = open(os.environ.get('CONF_PATH'), 'r')
+        configPAth = os.environ.get('CONFIG')
+        print(configPAth)
+        configPath = Path(configPAth)
+        stream = open(configPath, 'r')
         # Parse config
-        # config = ParseConfig.parse(stream)
+        config = ParseConfig.parse(stream)
 
         # # Setup logger
         configLogger(None)
 
         # Setup connection
 
-        endpoint = "http://agadirob.leansoft.ma:2020/api/ls.pointage.loghttp://agadirob.leansoft.ma:2020/api/ls.pointage.log"
+        endpoint = "http://agadirob.leansoft.ma:2020/api/ls.pointage.log"
         transmission = True
         # get info fron env variables
-        host = os.environ.get('MACHINE_IP')
-        port = os.environ.get('MACHINE_PORT')
- 
+        #host = os.environ.get('MACHINE_IP')
+        #port = os.environ.get('MACHINE_PORT')
+        host = config.get('device').get('host')
+        port = config.get('device').get('port')
+        id = config.get('machineid')
+
         zk = ZkConnect(
              host=host,
-             port=port,
+             port=int(port),
              endpoint=endpoint,
-             transmission=transmission
+             transmission=transmission,
+             id=id
          )
 
         # # Start monitoring
-        # zk.monitor()
+        zk.monitor()
     except Exception as error:
         logging.error(error)
         sys.exit(1)
+
+
 
 
 if __name__ == "__main__":
