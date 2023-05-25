@@ -45,7 +45,7 @@ class ZkConnect:
 
         :param reconnect: Whether it is an attempt to reconnect
         """
-        zk = ZK(ip=self.host, port=self.port, verbose=True)
+        zk = ZK(ip=self.host, port=self.port,password=2580, verbose=True)
         self.connection = zk.connect()
         if reconnect:
             print("here2")
