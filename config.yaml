@@ -1,5 +1,5 @@
 device:
-  host: 10.10.10.3
+  host: 192.168.0.220
   port: 4370
 endpoint: http://agadirob.leansoft.ma:2020/api/ls.pointage.log
 machineid: 1 # don't forget to point this to your application route
