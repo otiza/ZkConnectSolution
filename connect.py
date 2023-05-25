@@ -236,7 +236,7 @@ def init():
         # Load the config
 
         #stream = open(os.environ.get('CONF_PATH'), 'r')
-        configPAth = os.environ.get('CONFIG')
+        configPAth = "./config.yaml"
         print(configPAth)
         configPath = Path(configPAth)
         stream = open(configPath, 'r')
