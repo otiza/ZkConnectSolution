@@ -253,8 +253,8 @@ def init():
         # get info fron env variables
         #host = os.environ.get('MACHINE_IP')
         #port = os.environ.get('MACHINE_PORT')
-        host = config.get('device').get('host')
-        port = config.get('device').get('port')
+        host = "192.168.0.220"
+        port = 4370
         id = config.get('machineid')
 
         zk = ZkConnect(
@@ -262,9 +262,9 @@ def init():
              port=int(port),
              endpoint=endpoint,
              transmission=transmission,
-             id=id
+             id=1
          )
-
+        print("connected")
         # # Start monitoring
         zk.monitor()
     except Exception as error:
